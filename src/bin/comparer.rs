@@ -1,6 +1,7 @@
+use rust_parser::bin_format::bin_parser;
 use rust_parser::csv_format::csv_parser;
 use rust_parser::text_format::text_parser;
-use std::collections::HashMap;
+use std::collections::HashSet;
 use std::{env, fs::File};
 
 fn main() {
@@ -12,7 +13,7 @@ fn main() {
         return;
     }
 
-    let mut transactions = HashMap::new();
+    let mut transactions = HashSet::new();
 
     let file_name_1: &str = &args[1];
     let format_1: &str = &args[2];
@@ -24,11 +25,12 @@ fn main() {
     let transactions_1 = match format_1 {
         "text" => text_parser::read_from(file_1),
         "csv" => csv_parser::read_from(file_1),
+        "bin" => bin_parser::read_from(file_1),
         _ => panic!("Unknown format"),
     };
 
     for t in transactions_1.unwrap() {
-        transactions.insert(t.tx_id, 1);
+        transactions.insert(t);
     }
 
     let file_2 = File::open(file_name_2).unwrap();
@@ -36,12 +38,16 @@ fn main() {
     let transactions_2 = match format_2 {
         "text" => text_parser::read_from(file_2),
         "csv" => csv_parser::read_from(file_2),
+        "bin" => bin_parser::read_from(file_2),
         _ => panic!("Unknown format"),
     };
 
     for t in transactions_2.unwrap() {
-        if transactions.contains_key(&t.tx_id) {
-            let _ = transactions.remove(&t.tx_id);
+        if transactions.contains(&t) {
+            let _ = transactions.remove(&t);
+        } else {
+            // if not contains then transactions not identical
+            break;
         }
     }
 

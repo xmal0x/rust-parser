@@ -1,5 +1,6 @@
 use std::{env, fs::File};
 
+use rust_parser::bin_format::bin_parser;
 use rust_parser::csv_format::csv_parser;
 use rust_parser::text_format::text_parser;
 
@@ -22,6 +23,7 @@ fn main() {
     let data = match from_format {
         "text" => text_parser::read_from(f),
         "csv" => csv_parser::read_from(f),
+        "bin" => bin_parser::read_from(f),
         _ => panic!("Unknown format"),
     };
 
@@ -30,6 +32,7 @@ fn main() {
     let r = match to_format {
         "text" => text_parser::write_to(&mut buffer, data.unwrap()),
         "csv" => csv_parser::write_to(&mut buffer, data.unwrap()),
+        "bin" => bin_parser::write_to(&mut buffer, data.unwrap()),
         _ => panic!("Unknown format"),
     };
 

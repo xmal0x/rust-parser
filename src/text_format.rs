@@ -1,16 +1,4 @@
-// #[derive(Debug)]
-// pub struct TextRecord {
-//     tx_id: u64,
-//     tx_type: String,
-//     from_user_id: u64,
-//     to_user_id: u64,
-//     amount: u64,
-//     timestamp: i64,
-//     status: String,
-//     description: String,
-// }
-
-use crate::Record;
+use crate::{Record, TransactionStatus, TransactionType};
 
 impl Record {
     // TODO add safety bulder
@@ -31,12 +19,12 @@ impl Record {
 #[derive(Debug)]
 pub struct TextRecordDraft {
     tx_id: Option<u64>,
-    tx_type: Option<String>,
+    tx_type: Option<TransactionType>,
     from_user_id: Option<u64>,
     to_user_id: Option<u64>,
-    amount: Option<u64>,
-    timestamp: Option<i64>,
-    status: Option<String>,
+    amount: Option<i64>,
+    timestamp: Option<u64>,
+    status: Option<TransactionStatus>,
     description: Option<String>,
 }
 
@@ -65,10 +53,12 @@ impl TextRecordDraft {
 }
 
 pub mod text_parser {
-    use crate::text_format::{Record, TextRecordDraft};
+    use crate::error::ParseError;
+    use crate::text_format::TextRecordDraft;
+    use crate::{Record, TransactionStatus, TransactionType};
     use std::io::{self, BufRead, BufWriter, Error, Write};
 
-    pub fn read_from<R: std::io::Read>(r: R) -> Result<Vec<Record>, Error> {
+    pub fn read_from<R: std::io::Read>(r: R) -> Result<Vec<Record>, ParseError> {
         let reader = io::BufReader::new(r);
         let mut data: Vec<Record> = Vec::new();
 
@@ -108,9 +98,9 @@ pub mod text_parser {
                 "TO_USER_ID" => draft.to_user_id = Some(parts[1].parse().unwrap()),
                 "TIMESTAMP" => draft.timestamp = Some(parts[1].parse().unwrap()),
                 "AMOUNT" => draft.amount = Some(parts[1].parse().unwrap()),
-                "TX_TYPE" => draft.tx_type = Some(parts[1].to_string()),
+                "TX_TYPE" => draft.tx_type = Some(TransactionType::from_str(parts[1])?),
                 "DESCRIPTION" => draft.description = Some(parts[1].to_string()),
-                "STATUS" => draft.status = Some(parts[1].to_string()),
+                "STATUS" => draft.status = Some(TransactionStatus::from_str(parts[1])),
                 other @ _ => panic!("Unknown field {}", other),
             }
         }
@@ -129,13 +119,13 @@ pub mod text_parser {
             let s = format!(
                 "TX_ID: {}\nTX_TYPE: {}\nTO_USER_ID: {}\nFROM_USER_ID: {}\nTIMESTAMP: {}\nDESCRIPTION: {}\nAMOUNT: {}\nSTATUS: {}\n\n",
                 record.tx_id,
-                record.tx_type,
+                TransactionType::to_str(&record.tx_type),
                 record.to_user_id,
                 record.from_user_id,
                 record.timestamp,
                 record.description,
                 record.amount,
-                record.status
+                TransactionStatus::to_str(&record.status)
             );
             data.push_str(&s);
         }
@@ -148,8 +138,8 @@ pub mod text_parser {
 
 #[cfg(test)]
 mod tests {
+    use crate::{Record, TransactionType};
     use std::io::{BufRead, BufReader, Cursor};
-    use text_parser;
 
     use super::*;
 
@@ -198,32 +188,32 @@ mod tests {
         let data = vec![
             Record {
                 tx_id: 1000000000000000,
-                tx_type: "DEPOSIT".to_string(),
+                tx_type: TransactionType::Deposit,
                 from_user_id: 0,
                 to_user_id: 9223372036854775807,
                 amount: 100,
                 timestamp: 1633036860000,
-                status: "FAILURE".to_string(),
+                status: TransactionStatus::Failure,
                 description: "Record number 1".to_string(),
             },
             Record {
                 tx_id: 1000000000000001,
-                tx_type: "TRANSFER".to_string(),
+                tx_type: TransactionType::Transfer,
                 from_user_id: 9223372036854775807,
                 to_user_id: 9223372036854775807,
                 amount: 200,
                 timestamp: 1633036920000,
-                status: "PENDING".to_string(),
+                status: TransactionStatus::Pending,
                 description: "Record number 2".to_string(),
             },
             Record {
                 tx_id: 1000000000000002,
-                tx_type: "WITHDRAWAL".to_string(),
+                tx_type: TransactionType::Withdrawal,
                 from_user_id: 599094029349995112,
                 to_user_id: 0,
                 amount: 300,
                 timestamp: 1633036980000,
-                status: "SUCCESS".to_string(),
+                status: TransactionStatus::Success,
                 description: "Record number 3".to_string(),
             },
         ];

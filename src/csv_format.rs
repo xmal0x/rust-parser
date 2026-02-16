@@ -1,55 +1,26 @@
-#[derive(Debug)]
-enum TransactionType {
-    Deposit,
-    Withdrawal,
-    Transfer,
-}
-
-#[derive(Debug)]
-enum TransactionStatus {
-    Success,
-    Failure,
-    Pending,
-}
-
-// #[derive(Debug)]
-// pub struct CsvRecord {
-//     tx_id: u64,
-//     tx_type: TransactionType,
-//     from_user_id: u64,
-//     to_user_id: u64,
-//     amount: u64,
-//     timestamp: i64,
-//     status: TransactionStatus,
-//     description: String,
-// }
-//
-use crate::Record;
-
 pub mod csv_parser {
-    use crate::csv_format::{Record, TransactionStatus, TransactionType};
+    use crate::{Record, TransactionStatus, TransactionType, error::ParseError};
     use std::io::{self, BufRead, BufWriter, Error, Write};
 
     const HEADER: &str =
         "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
 
-    pub fn read_from<R: std::io::Read>(r: R) -> Result<Vec<Record>, Error> {
+    pub fn read_from<R: std::io::Read>(r: R) -> Result<Vec<Record>, ParseError> {
         let mut reader = io::BufReader::new(r);
         let mut data: Vec<Record> = Vec::new();
         let mut header = String::new();
         let _ = reader.read_line(&mut header)?;
-        println!("Header {}", header);
         for line in reader.lines() {
             let line = line.unwrap();
             let parts: Vec<&str> = line.trim().split(',').collect();
             if parts.len() == 8 {
                 let tx_id: u64 = parts[0].parse().unwrap();
-                let tx_type: String = parts[1].to_string();
+                let tx_type: TransactionType = TransactionType::from_str(parts[1])?;
                 let from_user_id: u64 = parts[2].parse().unwrap();
                 let to_user_id: u64 = parts[3].parse().unwrap();
-                let amount: u64 = parts[4].parse().unwrap();
-                let timestamp: i64 = parts[5].parse().unwrap();
-                let status: String = parts[6].to_string();
+                let amount: i64 = parts[4].parse().unwrap();
+                let timestamp: u64 = parts[5].parse().unwrap();
+                let status: TransactionStatus = TransactionStatus::from_str(parts[6]);
                 let description: String = parts[7].to_string();
 
                 data.push(Record {
@@ -75,12 +46,12 @@ pub mod csv_parser {
             data.push_str(&format!(
                 "{},{},{},{},{},{},{},{}\n",
                 record.tx_id,
-                record.tx_type,
+                TransactionType::to_str(&record.tx_type),
                 record.from_user_id,
                 record.to_user_id,
                 record.amount,
                 record.timestamp,
-                record.status,
+                TransactionStatus::to_str(&record.status),
                 record.description
             ));
         }
@@ -89,45 +60,11 @@ pub mod csv_parser {
 
         Ok(())
     }
-
-    // fn parse_to_transaction_type(value: &str) -> TransactionType {
-    //     match value {
-    //         "WITHDRAWAL" => TransactionType::Withdrawal,
-    //         "DEPOSIT" => TransactionType::Deposit,
-    //         "TRANSFER" => TransactionType::Transfer,
-    //         _ => panic!("Unknown transaction type"),
-    //     }
-    // }
-
-    // fn parse_from_transaction_type(value: &TransactionType) -> &str {
-    //     match value {
-    //         TransactionType::Deposit => "DEPOSIT",
-    //         TransactionType::Transfer => "TRANSFER",
-    //         TransactionType::Withdrawal => "WITHDRAWAL",
-    //     }
-    // }
-
-    // fn parse_to_transaction_status(value: &str) -> TransactionStatus {
-    //     match value {
-    //         "SUCCESS" => TransactionStatus::Success,
-    //         "FAILURE" => TransactionStatus::Failure,
-    //         "PENDING" => TransactionStatus::Pending,
-    //         _ => panic!("Unknown transaction status"),
-    //     }
-    // }
-
-    // fn parse_from_transaction_status(value: &TransactionStatus) -> &str {
-    //     match value {
-    //         TransactionStatus::Success => "SUCCESS",
-    //         TransactionStatus::Failure => "FAILURE",
-    //         TransactionStatus::Pending => "PENDING",
-    //     }
-    // }
 }
 
 #[cfg(test)]
 mod tests {
-    use csv_parser;
+    use crate::{Record, TransactionStatus, TransactionType};
     use std::io::{BufRead, BufReader, Cursor};
 
     use super::*;
@@ -150,32 +87,32 @@ mod tests {
         let data = vec![
             Record {
                 tx_id: 1000000000000000,
-                tx_type: "DEPOSIT".to_string(),
+                tx_type: TransactionType::Deposit,
                 from_user_id: 0,
                 to_user_id: 9223372036854775807,
                 amount: 100,
                 timestamp: 1633036860000,
-                status: "FAILURE".to_string(),
+                status: TransactionStatus::Failure,
                 description: "Record number 1".to_string(),
             },
             Record {
                 tx_id: 1000000000000001,
-                tx_type: "TRANSFER".to_string(),
+                tx_type: TransactionType::Transfer,
                 from_user_id: 9223372036854775807,
                 to_user_id: 9223372036854775807,
                 amount: 200,
                 timestamp: 1633036920000,
-                status: "PENDING".to_string(),
+                status: TransactionStatus::Pending,
                 description: "Record number 2".to_string(),
             },
             Record {
                 tx_id: 1000000000000002,
-                tx_type: "WITHDRAWAL".to_string(),
+                tx_type: TransactionType::Withdrawal,
                 from_user_id: 599094029349995112,
                 to_user_id: 0,
                 amount: 300,
                 timestamp: 1633036980000,
-                status: "SUCCESS".to_string(),
+                status: TransactionStatus::Success,
                 description: "Record number 3".to_string(),
             },
         ];
