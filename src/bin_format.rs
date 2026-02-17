@@ -1,7 +1,7 @@
 pub mod bin_parser {
     use crate::error::ParseError;
     use crate::{Record, TransactionStatus, TransactionType};
-    use std::io::{BufReader, BufWriter, Error, ErrorKind, Read, Write};
+    use std::io::{BufReader, BufWriter, ErrorKind, Read, Write};
 
     const MAGIC: [u8; 4] = *b"YPBN";
     const MIN_RECORD_SIZE: u32 = 46;
@@ -71,7 +71,7 @@ pub mod bin_parser {
                 return Err(ParseError::RecordDamaged(tx_id));
             }
 
-            let desc_bytes = body.get(46..).ok_or(ParseError::TruncatedRecord)?;
+            let desc_bytes = body.get(46..).ok_or(ParseError::RecordTooShort)?;
 
             let description =
                 String::from_utf8(desc_bytes.to_vec()).map_err(ParseError::InvalidUtf8)?;
@@ -119,7 +119,10 @@ pub mod bin_parser {
     ///
     /// assert_eq!(binary.len(), 71);
     /// ```
-    pub fn write_to<W: std::io::Write>(writer: &mut W, records: Vec<Record>) -> Result<(), Error> {
+    pub fn write_to<W: std::io::Write>(
+        writer: &mut W,
+        records: Vec<Record>,
+    ) -> Result<(), ParseError> {
         let mut buffer = BufWriter::new(writer);
         let mut data: Vec<u8> = Vec::new();
 
@@ -156,7 +159,7 @@ pub mod bin_parser {
     }
 
     fn u64(body: &[u8], start: usize, end: usize) -> Result<u64, ParseError> {
-        let slice = body.get(start..end).ok_or(ParseError::TruncatedRecord)?;
+        let slice = body.get(start..end).ok_or(ParseError::RecordTooShort)?;
         let mut bytes = [0u8; 8];
         bytes.copy_from_slice(slice);
         let result = u64::from_be_bytes(bytes);
@@ -164,7 +167,7 @@ pub mod bin_parser {
     }
 
     fn u32(body: &[u8], start: usize, end: usize) -> Result<u32, ParseError> {
-        let slice = body.get(start..end).ok_or(ParseError::TruncatedRecord)?;
+        let slice = body.get(start..end).ok_or(ParseError::RecordTooShort)?;
         let mut bytes = [0u8; 4];
         bytes.copy_from_slice(slice);
         let result = u32::from_be_bytes(bytes);
@@ -172,7 +175,7 @@ pub mod bin_parser {
     }
 
     fn u8(body: &[u8], pos: usize) -> Result<u8, ParseError> {
-        let byte = *body.get(pos).ok_or(ParseError::TruncatedRecord)?;
+        let byte = *body.get(pos).ok_or(ParseError::RecordTooShort)?;
         Ok(byte)
     }
 }

@@ -3,33 +3,29 @@ use crate::{Record, TransactionStatus, TransactionType, error::ParseError};
 impl Record {
     fn from_draft(draft: &TextRecordDraft) -> Result<Record, ParseError> {
         Ok(Record {
-            tx_id: draft
-                .tx_id
-                .ok_or(ParseError::MissingField("tx_id".to_string()))?,
+            tx_id: draft.tx_id.ok_or(ParseError::MissingField("tx_id"))?,
             from_user_id: draft
                 .from_user_id
-                .ok_or(ParseError::MissingField("from_user_id".to_string()))?,
+                .ok_or(ParseError::MissingField("from_user_id"))?,
             to_user_id: draft
                 .to_user_id
-                .ok_or(ParseError::MissingField("to_user_id".to_string()))?,
-            amount: draft
-                .amount
-                .ok_or(ParseError::MissingField("amount".to_string()))?,
+                .ok_or(ParseError::MissingField("to_user_id"))?,
+            amount: draft.amount.ok_or(ParseError::MissingField("amount"))?,
             tx_type: draft
                 .tx_type
                 .clone()
-                .ok_or(ParseError::MissingField("tx_type".to_string()))?,
+                .ok_or(ParseError::MissingField("tx_type"))?,
             timestamp: draft
                 .timestamp
-                .ok_or(ParseError::MissingField("timestamp".to_string()))?,
+                .ok_or(ParseError::MissingField("timestamp"))?,
             status: draft
                 .status
                 .clone()
-                .ok_or(ParseError::MissingField("status".to_string()))?,
+                .ok_or(ParseError::MissingField("status"))?,
             description: draft
                 .description
                 .clone()
-                .ok_or(ParseError::MissingField("description".to_string()))?,
+                .ok_or(ParseError::MissingField("description"))?,
         })
     }
 }
@@ -74,7 +70,7 @@ pub mod text_parser {
     use crate::error::ParseError;
     use crate::text_format::TextRecordDraft;
     use crate::{Record, TransactionStatus, TransactionType};
-    use std::io::{self, BufRead, BufWriter, Error, Write};
+    use std::io::{self, BufRead, BufWriter, Write};
 
     /// Read transactions from text format and converting to Record entity
     ///
@@ -112,7 +108,7 @@ pub mod text_parser {
         };
 
         for line in reader.lines() {
-            let line = line.map_err(|e| ParseError::Io(e))?;
+            let line = line.map_err(ParseError::Io)?;
             let line = line.trim();
 
             if line.is_empty() && !draft.is_empty() {
@@ -138,9 +134,9 @@ pub mod text_parser {
                 "TO_USER_ID" => draft.to_user_id = Some(parse_str(value)?),
                 "TIMESTAMP" => draft.timestamp = Some(parse_str(value)?),
                 "AMOUNT" => draft.amount = Some(parse_str(value)?),
-                "TX_TYPE" => draft.tx_type = Some(TransactionType::from_str(value)?),
+                "TX_TYPE" => draft.tx_type = Some(TransactionType::parse(value)?),
                 "DESCRIPTION" => draft.description = Some(value.to_string()),
-                "STATUS" => draft.status = Some(TransactionStatus::from_str(value)?),
+                "STATUS" => draft.status = Some(TransactionStatus::parse(value)?),
                 _ => return Err(ParseError::MalformedLine),
             }
         }
@@ -180,7 +176,10 @@ pub mod text_parser {
     ///
     /// assert_eq!(lines.len(), 8);
     /// ```
-    pub fn write_to<W: std::io::Write>(writer: &mut W, records: Vec<Record>) -> Result<(), Error> {
+    pub fn write_to<W: std::io::Write>(
+        writer: &mut W,
+        records: Vec<Record>,
+    ) -> Result<(), ParseError> {
         let mut buffer = BufWriter::new(writer);
         let mut data = String::new();
 

@@ -52,7 +52,7 @@ impl TransactionType {
         }
     }
 
-    pub fn from_str(tx_type: &str) -> Result<TransactionType, ParseTransactionTypeError> {
+    pub fn parse(tx_type: &str) -> Result<TransactionType, ParseTransactionTypeError> {
         match tx_type {
             "DEPOSIT" => Ok(TransactionType::Deposit),
             "TRANSFER" => Ok(TransactionType::Transfer),
@@ -99,7 +99,7 @@ impl TransactionStatus {
         }
     }
 
-    pub fn from_str(tx_type: &str) -> Result<TransactionStatus, ParseTransactionStatusError> {
+    pub fn parse(tx_type: &str) -> Result<TransactionStatus, ParseTransactionStatusError> {
         match tx_type {
             "SUCCESS" => Ok(TransactionStatus::Success),
             "FAILURE" => Ok(TransactionStatus::Failure),

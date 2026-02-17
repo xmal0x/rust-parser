@@ -7,17 +7,15 @@ pub enum ParseError {
     TransactionType(ParseTransactionTypeError),
     TransactionStatus(ParseTransactionStatusError),
     RecordDamaged(u64),
-    TruncatedRecord,
     UnexpectedEof { needed: usize, got: usize },
     UnexpectedRecordSize(u32),
     InvalidMagic,
-    TruncatedHeader,
     RecordTooShort,
     Io(io::Error),
     InvalidUtf8(std::string::FromUtf8Error),
     InvalidNumber,
     MalformedLine,
-    MissingField(String),
+    MissingField(&'static str),
     InvalidFormat(String),
     InvalidArgument(&'static str),
 }
@@ -34,8 +32,6 @@ impl Display for ParseError {
             Self::UnexpectedRecordSize(s) => {
                 write!(f, "Unexpected Record size {}", s)
             }
-            Self::TruncatedRecord => write!(f, "Truncated Record"),
-            Self::TruncatedHeader => write!(f, "Truncated header"),
             Self::InvalidMagic => write!(f, "Invalid magic"),
             Self::RecordTooShort => write!(f, "Record too short"),
             Self::Io(e) => write!(f, "Io error: {}", e),

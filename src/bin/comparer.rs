@@ -11,18 +11,10 @@ fn main() -> Result<(), ParseError> {
 
     const USAGE_MSG: &str = "Usage: text_file.txt text csv_file.csv csv";
 
-    let file_name_1 = args
-        .next()
-        .ok_or_else(|| ParseError::InvalidArgument(USAGE_MSG))?;
-    let format_1 = args
-        .next()
-        .ok_or_else(|| ParseError::InvalidArgument(USAGE_MSG))?;
-    let file_name_2 = args
-        .next()
-        .ok_or_else(|| ParseError::InvalidArgument(USAGE_MSG))?;
-    let format_2 = args
-        .next()
-        .ok_or_else(|| ParseError::InvalidArgument(USAGE_MSG))?;
+    let file_name_1 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
+    let format_1 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
+    let file_name_2 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
+    let format_2 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
 
     let transactions_1 = get_transactions_from_file(&file_name_1, &format_1)?;
 
@@ -46,16 +38,12 @@ fn main() -> Result<(), ParseError> {
 fn get_transactions_from_file(name: &str, format: &str) -> Result<Vec<Record>, ParseError> {
     let file = File::open(name).map_err(ParseError::Io)?;
 
-    let transactions = match format {
+    match format {
         "text" => text_parser::read_from(file),
         "csv" => csv_parser::read_from(file),
         "bin" => bin_parser::read_from(file),
-        other => {
-            return Err(ParseError::InvalidFormat(other.to_string()));
-        }
-    };
-
-    transactions
+        other => Err(ParseError::InvalidFormat(other.to_string())),
+    }
 }
 
 fn is_equal_transactions(transactions_1: &[Record], transactions_2: &[Record]) -> bool {

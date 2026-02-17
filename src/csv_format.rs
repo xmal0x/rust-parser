@@ -1,6 +1,6 @@
 pub mod csv_parser {
     use crate::{Record, TransactionStatus, TransactionType, error::ParseError};
-    use std::io::{self, BufRead, BufWriter, Error, Write};
+    use std::io::{self, BufRead, BufWriter, Write};
 
     const HEADER: &str =
         "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
@@ -33,13 +33,13 @@ pub mod csv_parser {
             let tx_id = self::parse_number(it.next())?;
 
             let tx_type_value = it.next().ok_or(ParseError::MalformedLine)?;
-            let tx_type: TransactionType = TransactionType::from_str(tx_type_value)?;
+            let tx_type: TransactionType = TransactionType::parse(tx_type_value)?;
             let from_user_id = self::parse_number(it.next())?;
             let to_user_id = self::parse_number(it.next())?;
             let amount = self::parse_number(it.next())?;
             let timestamp = self::parse_number(it.next())?;
             let status_value = it.next().ok_or(ParseError::MalformedLine)?;
-            let status: TransactionStatus = TransactionStatus::from_str(status_value)?;
+            let status: TransactionStatus = TransactionStatus::parse(status_value)?;
             let description: String = it.next().ok_or(ParseError::MalformedLine)?.to_string();
 
             if it.next().is_some() {
@@ -89,9 +89,12 @@ pub mod csv_parser {
     ///
     /// assert_eq!(lines.len(), 2);
     /// ```
-    pub fn write_to<W: std::io::Write>(writer: &mut W, records: Vec<Record>) -> Result<(), Error> {
+    pub fn write_to<W: std::io::Write>(
+        writer: &mut W,
+        records: Vec<Record>,
+    ) -> Result<(), ParseError> {
         let mut buffer = BufWriter::new(writer);
-        let mut data = String::from(format!("{}\n", HEADER));
+        let mut data = format!("{}\n", HEADER);
 
         for record in records {
             data.push_str(&format!(
