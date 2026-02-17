@@ -18,22 +18,48 @@ fn main() {
     let to_file: &str = &args[3];
     let to_format: &str = &args[4];
 
-    let f = File::open(from_file_name).unwrap();
+    let f = match File::open(from_file_name) {
+        Ok(f) => f,
+        Err(e) => {
+            println!("Can not read file {} {}", from_file_name, e);
+            return;
+        }
+    };
 
     let data = match from_format {
         "text" => text_parser::read_from(f),
         "csv" => csv_parser::read_from(f),
         "bin" => bin_parser::read_from(f),
-        _ => panic!("Unknown format"),
+        _ => {
+            println!("Unknown format {}", from_format);
+            return;
+        }
     };
 
-    let mut buffer = File::create(to_file).unwrap();
+    let data = match data {
+        Ok(d) => d,
+        Err(e) => {
+            println!("Parsing error {}", e);
+            return;
+        }
+    };
+
+    let mut buffer = match File::create(to_file) {
+        Ok(f) => f,
+        Err(e) => {
+            println!("Can not create file {} {}", to_file, e);
+            return;
+        }
+    };
 
     let r = match to_format {
-        "text" => text_parser::write_to(&mut buffer, data.unwrap()),
-        "csv" => csv_parser::write_to(&mut buffer, data.unwrap()),
-        "bin" => bin_parser::write_to(&mut buffer, data.unwrap()),
-        _ => panic!("Unknown format"),
+        "text" => text_parser::write_to(&mut buffer, data),
+        "csv" => csv_parser::write_to(&mut buffer, data),
+        "bin" => bin_parser::write_to(&mut buffer, data),
+        _ => {
+            println!("Unknown format {}", from_format);
+            return;
+        }
     };
 
     assert!(r.is_ok());

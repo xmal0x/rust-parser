@@ -1,18 +1,36 @@
-use crate::{Record, TransactionStatus, TransactionType};
+use crate::{Record, TransactionStatus, TransactionType, error::ParseError};
 
 impl Record {
-    // TODO add safety bulder
-    fn from_draft(draft: &TextRecordDraft) -> Record {
-        Record {
-            tx_id: draft.tx_id.unwrap(),
-            from_user_id: draft.from_user_id.unwrap(),
-            to_user_id: draft.to_user_id.unwrap(),
-            amount: draft.amount.unwrap(),
-            tx_type: draft.tx_type.clone().unwrap(),
-            timestamp: draft.timestamp.unwrap(),
-            status: draft.status.clone().unwrap(),
-            description: draft.description.clone().unwrap(),
-        }
+    fn from_draft(draft: &TextRecordDraft) -> Result<Record, ParseError> {
+        Ok(Record {
+            tx_id: draft
+                .tx_id
+                .ok_or(ParseError::MissingField("tx_id".to_string()))?,
+            from_user_id: draft
+                .from_user_id
+                .ok_or(ParseError::MissingField("from_user_id".to_string()))?,
+            to_user_id: draft
+                .to_user_id
+                .ok_or(ParseError::MissingField("to_user_id".to_string()))?,
+            amount: draft
+                .amount
+                .ok_or(ParseError::MissingField("amount".to_string()))?,
+            tx_type: draft
+                .tx_type
+                .clone()
+                .ok_or(ParseError::MissingField("tx_type".to_string()))?,
+            timestamp: draft
+                .timestamp
+                .ok_or(ParseError::MissingField("timestamp".to_string()))?,
+            status: draft
+                .status
+                .clone()
+                .ok_or(ParseError::MissingField("status".to_string()))?,
+            description: draft
+                .description
+                .clone()
+                .ok_or(ParseError::MissingField("description".to_string()))?,
+        })
     }
 }
 
@@ -22,7 +40,7 @@ pub struct TextRecordDraft {
     tx_type: Option<TransactionType>,
     from_user_id: Option<u64>,
     to_user_id: Option<u64>,
-    amount: Option<i64>,
+    amount: Option<u64>,
     timestamp: Option<u64>,
     status: Option<TransactionStatus>,
     description: Option<String>,
@@ -58,6 +76,26 @@ pub mod text_parser {
     use crate::{Record, TransactionStatus, TransactionType};
     use std::io::{self, BufRead, BufWriter, Error, Write};
 
+    /// Read transactions from text format and converting to Record entity
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let data = "# Record 1 (DEPOSIT)
+    ///     TX_TYPE: DEPOSIT
+    ///     TO_USER_ID: 9223372036854775807
+    ///     FROM_USER_ID: 0
+    ///     TIMESTAMP: 1633036860000
+    ///     DESCRIPTION: \"Record number 1\"
+    ///     TX_ID: 1000000000000000
+    ///     AMOUNT: 100
+    ///     STATUS: FAILURE";
+    ///
+    /// let cursor = std::io::Cursor::new(&data[..]);
+    /// let r = rust_parser::text_format::text_parser::read_from(cursor).unwrap();
+    ///
+    /// assert_eq!(r.len(), 1);
+    /// ```
     pub fn read_from<R: std::io::Read>(r: R) -> Result<Vec<Record>, ParseError> {
         let reader = io::BufReader::new(r);
         let mut data: Vec<Record> = Vec::new();
@@ -74,11 +112,11 @@ pub mod text_parser {
         };
 
         for line in reader.lines() {
-            let line = line.unwrap();
+            let line = line.map_err(|e| ParseError::Io(e))?;
             let line = line.trim();
 
             if line.is_empty() && !draft.is_empty() {
-                let record = Record::from_draft(&draft);
+                let record = Record::from_draft(&draft)?;
                 data.push(record);
                 draft.reset();
                 continue;
@@ -90,27 +128,58 @@ pub mod text_parser {
                 continue;
             }
 
-            let parts: Vec<&str> = line.split(':').map(|v| v.trim()).collect();
+            let mut it = line.splitn(2, ':').map(|s| s.trim());
+            let key = it.next().ok_or(ParseError::MalformedLine)?;
+            let value = it.next().ok_or(ParseError::MalformedLine)?;
 
-            match parts[0] {
-                "TX_ID" => draft.tx_id = Some(parts[1].parse().unwrap()),
-                "FROM_USER_ID" => draft.from_user_id = Some(parts[1].parse().unwrap()),
-                "TO_USER_ID" => draft.to_user_id = Some(parts[1].parse().unwrap()),
-                "TIMESTAMP" => draft.timestamp = Some(parts[1].parse().unwrap()),
-                "AMOUNT" => draft.amount = Some(parts[1].parse().unwrap()),
-                "TX_TYPE" => draft.tx_type = Some(TransactionType::from_str(parts[1])?),
-                "DESCRIPTION" => draft.description = Some(parts[1].to_string()),
-                "STATUS" => draft.status = Some(TransactionStatus::from_str(parts[1])),
-                other @ _ => panic!("Unknown field {}", other),
+            match key {
+                "TX_ID" => draft.tx_id = Some(value.parse().unwrap()),
+                "FROM_USER_ID" => draft.from_user_id = Some(parse_str(value)?),
+                "TO_USER_ID" => draft.to_user_id = Some(parse_str(value)?),
+                "TIMESTAMP" => draft.timestamp = Some(parse_str(value)?),
+                "AMOUNT" => draft.amount = Some(parse_str(value)?),
+                "TX_TYPE" => draft.tx_type = Some(TransactionType::from_str(value)?),
+                "DESCRIPTION" => draft.description = Some(value.to_string()),
+                "STATUS" => draft.status = Some(TransactionStatus::from_str(value)?),
+                _ => return Err(ParseError::MalformedLine),
             }
         }
         if !draft.is_empty() {
-            let record = Record::from_draft(&draft);
+            let record = Record::from_draft(&draft)?;
             data.push(record);
         }
         Ok(data)
     }
 
+    /// Write transactions of Record entity to csv format
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::io::{BufRead, BufReader};
+    ///
+    /// let mock: Vec<rust_parser::Record> = vec![
+    /// rust_parser::Record {
+    ///     tx_id: 1000000000000000,
+    ///     tx_type: rust_parser::TransactionType::Deposit,
+    ///     from_user_id: 0,
+    ///     to_user_id: 9223372036854775807,
+    ///     amount: 100,
+    ///     timestamp: 1633036860000,
+    ///     status: rust_parser::TransactionStatus::Failure,
+    ///     description: String::from("\"Record number 1\""),
+    /// }];
+    ///
+    /// let mut cursor = std::io::Cursor::new(Vec::new());
+    /// let r = rust_parser::text_format::text_parser::write_to(&mut cursor, mock);
+    ///
+    /// assert!(r.is_ok());
+    ///
+    /// cursor.set_position(0);
+    /// let lines: Vec<String> = std::io::BufReader::new(cursor).lines().collect::<Result<_, _>>().unwrap();
+    ///
+    /// assert_eq!(lines.len(), 8);
+    /// ```
     pub fn write_to<W: std::io::Write>(writer: &mut W, records: Vec<Record>) -> Result<(), Error> {
         let mut buffer = BufWriter::new(writer);
         let mut data = String::new();
@@ -133,6 +202,10 @@ pub mod text_parser {
         write!(buffer, "{}", data.trim())?;
 
         Ok(())
+    }
+
+    fn parse_str(value: &str) -> Result<u64, ParseError> {
+        value.parse().map_err(|_| ParseError::InvalidNumber)
     }
 }
 
@@ -224,7 +297,10 @@ mod tests {
 
         assert!(r.is_ok());
         cursor.set_position(0);
-        let lines: Vec<String> = BufReader::new(cursor).lines().map(|l| l.unwrap()).collect();
+        let lines: Vec<String> = BufReader::new(cursor)
+            .lines()
+            .collect::<Result<_, _>>()
+            .unwrap();
 
         assert_eq!(lines.len(), 26);
     }

@@ -1,5 +1,7 @@
 use error::ParseTransactionTypeError;
 
+use crate::error::ParseTransactionStatusError;
+
 pub mod bin_format;
 pub mod csv_format;
 pub mod error;
@@ -8,13 +10,13 @@ pub mod text_format;
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Record {
     pub tx_id: u64,
-    tx_type: TransactionType,
-    from_user_id: u64,
-    to_user_id: u64,
-    amount: i64,
-    timestamp: u64,
-    status: TransactionStatus,
-    description: String,
+    pub tx_type: TransactionType,
+    pub from_user_id: u64,
+    pub to_user_id: u64,
+    pub amount: u64,
+    pub timestamp: u64,
+    pub status: TransactionStatus,
+    pub description: String,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
@@ -38,7 +40,7 @@ impl TransactionType {
             0 => Ok(TransactionType::Deposit),
             1 => Ok(TransactionType::Transfer),
             2 => Ok(TransactionType::Withdrawal),
-            other @ _ => Err(ParseTransactionTypeError::UnknownTransactionTypeByte(other)),
+            other => Err(ParseTransactionTypeError::UnknownTransactionTypeByte(other)),
         }
     }
 
@@ -55,7 +57,9 @@ impl TransactionType {
             "DEPOSIT" => Ok(TransactionType::Deposit),
             "TRANSFER" => Ok(TransactionType::Transfer),
             "WITHDRAWAL" => Ok(TransactionType::Withdrawal),
-            _ => panic!("Unknown type"),
+            other => Err(ParseTransactionTypeError::UnknownTransactionTypeString(
+                other.to_string(),
+            )),
         }
     }
 }
@@ -76,12 +80,14 @@ impl TransactionStatus {
         }
     }
 
-    pub fn from_byte(byte: u8) -> TransactionStatus {
+    pub fn from_byte(byte: u8) -> Result<TransactionStatus, ParseTransactionStatusError> {
         match byte {
-            0 => TransactionStatus::Success,
-            1 => TransactionStatus::Failure,
-            2 => TransactionStatus::Pending,
-            _ => panic!("Unknown type"),
+            0 => Ok(TransactionStatus::Success),
+            1 => Ok(TransactionStatus::Failure),
+            2 => Ok(TransactionStatus::Pending),
+            other => Err(ParseTransactionStatusError::UnknownTransactionStatusByte(
+                other,
+            )),
         }
     }
 
@@ -93,12 +99,14 @@ impl TransactionStatus {
         }
     }
 
-    pub fn from_str(tx_type: &str) -> TransactionStatus {
+    pub fn from_str(tx_type: &str) -> Result<TransactionStatus, ParseTransactionStatusError> {
         match tx_type {
-            "SUCCESS" => TransactionStatus::Success,
-            "FAILURE" => TransactionStatus::Failure,
-            "PENDING" => TransactionStatus::Pending,
-            _ => panic!("Unknown type"),
+            "SUCCESS" => Ok(TransactionStatus::Success),
+            "FAILURE" => Ok(TransactionStatus::Failure),
+            "PENDING" => Ok(TransactionStatus::Pending),
+            other => Err(ParseTransactionStatusError::UnknownTransactionStatusString(
+                other.to_string(),
+            )),
         }
     }
 }

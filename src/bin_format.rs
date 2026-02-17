@@ -4,7 +4,25 @@ pub mod bin_parser {
     use std::io::{BufReader, BufWriter, Error, ErrorKind, Read, Write};
 
     const MAGIC: [u8; 4] = *b"YPBN";
+    const MIN_RECORD_SIZE: u32 = 46;
+    const MAX_RECORD_SIZE: u32 = 150;
 
+    /// Read transactions from binary format and converting to Record entity
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// const BYTES_MOCK: [u8; 71] = [
+    /// 89, 80, 66, 78, 0, 0, 0, 63, 0, 3, 141, 126, 164, 198, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    /// 127, 255, 255, 255, 255, 255, 255, 255, 0, 0, 0, 0, 0, 0, 0, 100, 0, 0, 1, 124, 56, 148,
+    /// 250, 96, 1, 0, 0, 0, 17, 34, 82, 101, 99, 111, 114, 100, 32, 110, 117, 109, 98, 101, 114,
+    /// 32, 49, 34];
+    ///
+    /// let cursor = std::io::Cursor::new(&BYTES_MOCK[..]);
+    /// let r = rust_parser::bin_format::bin_parser::read_from(cursor).unwrap();
+    ///
+    /// assert_eq!(r.len(), 1);
+    /// ```
     pub fn read_from<R: std::io::Read>(r: R) -> Result<Vec<Record>, ParseError> {
         let mut data: Vec<Record> = Vec::new();
         let mut reader = BufReader::new(r);
@@ -25,31 +43,38 @@ pub mod bin_parser {
             let magic = &header[0..4];
 
             if magic != MAGIC {
-                panic!("NOT MAGIC");
+                return Err(ParseError::InvalidMagic);
             }
 
-            let record_size = u32::from_be_bytes(header[4..8].try_into().unwrap());
+            let mut rs_bytes = [0u8; 4];
+            rs_bytes.copy_from_slice(&header[4..8]);
+            let record_size = u32::from_be_bytes(rs_bytes);
+
+            if !(MIN_RECORD_SIZE..=MAX_RECORD_SIZE).contains(&record_size) {
+                return Err(ParseError::UnexpectedRecordSize(record_size));
+            }
 
             let mut body = vec![0u8; record_size as usize];
 
             let _ = reader.read_exact(&mut body);
 
-            let tx_id = u64::from_be_bytes(body[0..8].try_into().unwrap());
-            let tx_type =
-                TransactionType::from_byte(u8::from_be_bytes(body[8..9].try_into().unwrap()))?;
-            let from_user_id = u64::from_be_bytes(body[9..17].try_into().unwrap());
-            let to_user_id = u64::from_be_bytes(body[17..25].try_into().unwrap());
-            let amount = i64::from_be_bytes(body[25..33].try_into().unwrap());
-            let timestamp = u64::from_be_bytes(body[33..41].try_into().unwrap());
-            let status =
-                TransactionStatus::from_byte(u8::from_be_bytes(body[41..42].try_into().unwrap()));
-            let desc_len = u32::from_be_bytes(body[42..46].try_into().unwrap());
+            let tx_id = self::u64(&body, 0, 8)?;
+            let tx_type = TransactionType::from_byte(self::u8(&body, 8)?)?;
+            let from_user_id = self::u64(&body, 9, 17)?;
+            let to_user_id = self::u64(&body, 17, 25)?;
+            let amount = self::u64(&body, 25, 33)?;
+            let timestamp = self::u64(&body, 33, 41)?;
+            let status = TransactionStatus::from_byte(self::u8(&body, 41)?)?;
+            let desc_len = self::u32(&body, 42, 46)?;
 
-            if desc_len != record_size - 46 {
-                panic!("Record damaged");
+            if desc_len != record_size - MIN_RECORD_SIZE {
+                return Err(ParseError::RecordDamaged(tx_id));
             }
 
-            let description = String::from_utf8(body[46..].try_into().unwrap()).unwrap();
+            let desc_bytes = body.get(46..).ok_or(ParseError::TruncatedRecord)?;
+
+            let description =
+                String::from_utf8(desc_bytes.to_vec()).map_err(ParseError::InvalidUtf8)?;
 
             let record = Record {
                 tx_id,
@@ -67,6 +92,33 @@ pub mod bin_parser {
         Ok(data)
     }
 
+    /// Write transactions of Record entity to binary format
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///let mock: Vec<rust_parser::Record> = vec![
+    /// rust_parser::Record {
+    ///     tx_id: 1000000000000000,
+    ///     tx_type: rust_parser::TransactionType::Deposit,
+    ///     from_user_id: 0,
+    ///     to_user_id: 9223372036854775807,
+    ///     amount: 100,
+    ///     timestamp: 1633036860000,
+    ///     status: rust_parser::TransactionStatus::Failure,
+    ///     description: String::from("\"Record number 1\""),
+    /// }];
+    ///
+    /// let mut cursor = std::io::Cursor::new(Vec::new());
+    /// let r = rust_parser::bin_format::bin_parser::write_to(&mut cursor, mock);
+    ///
+    /// assert!(r.is_ok());
+    ///
+    /// cursor.set_position(0);
+    /// let binary = cursor.into_inner();
+    ///
+    /// assert_eq!(binary.len(), 71);
+    /// ```
     pub fn write_to<W: std::io::Write>(writer: &mut W, records: Vec<Record>) -> Result<(), Error> {
         let mut buffer = BufWriter::new(writer);
         let mut data: Vec<u8> = Vec::new();
@@ -95,12 +147,33 @@ pub mod bin_parser {
             data.extend_from_slice(&timestamp_bytes);
             data.extend_from_slice(&[status_bytes]);
             data.extend_from_slice(&desc_len_bytes);
-            data.extend_from_slice(&description_bytes);
+            data.extend_from_slice(description_bytes);
         }
 
         let _ = buffer.write_all(&data);
 
         Ok(())
+    }
+
+    fn u64(body: &[u8], start: usize, end: usize) -> Result<u64, ParseError> {
+        let slice = body.get(start..end).ok_or(ParseError::TruncatedRecord)?;
+        let mut bytes = [0u8; 8];
+        bytes.copy_from_slice(slice);
+        let result = u64::from_be_bytes(bytes);
+        Ok(result)
+    }
+
+    fn u32(body: &[u8], start: usize, end: usize) -> Result<u32, ParseError> {
+        let slice = body.get(start..end).ok_or(ParseError::TruncatedRecord)?;
+        let mut bytes = [0u8; 4];
+        bytes.copy_from_slice(slice);
+        let result = u32::from_be_bytes(bytes);
+        Ok(result)
+    }
+
+    fn u8(body: &[u8], pos: usize) -> Result<u8, ParseError> {
+        let byte = *body.get(pos).ok_or(ParseError::TruncatedRecord)?;
+        Ok(byte)
     }
 }
 
@@ -176,10 +249,10 @@ mod tests {
 
         let r = bin_parser::write_to(&mut cursor, records_mock().to_vec());
 
-        assert!(r.is_ok());
         cursor.set_position(0);
         let binary = cursor.into_inner();
 
+        assert!(r.is_ok());
         assert_eq!(binary.len(), BYTES_MOCK.len());
     }
 }

@@ -5,14 +5,42 @@ use std::io;
 #[derive(Debug)]
 pub enum ParseError {
     TransactionType(ParseTransactionTypeError),
+    TransactionStatus(ParseTransactionStatusError),
+    RecordDamaged(u64),
+    TruncatedRecord,
+    UnexpectedEof { needed: usize, got: usize },
+    UnexpectedRecordSize(u32),
+    InvalidMagic,
+    TruncatedHeader,
+    RecordTooShort,
     Io(io::Error),
+    InvalidUtf8(std::string::FromUtf8Error),
+    InvalidNumber,
+    MalformedLine,
+    MissingField(String),
 }
 
 impl Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::TransactionType(e) => write!(f, "Transaction type error: {}", e),
+            Self::TransactionStatus(e) => write!(f, "Transaction status error: {}", e),
+            Self::RecordDamaged(tx_id) => write!(f, "Record with id '{}' damaged", tx_id),
+            Self::UnexpectedEof { needed, got } => {
+                write!(f, "Unexpected Eof, needed {}, got {}", needed, got)
+            }
+            Self::UnexpectedRecordSize(s) => {
+                write!(f, "Unexpected Record size {}", s)
+            }
+            Self::TruncatedRecord => write!(f, "Truncated Record"),
+            Self::TruncatedHeader => write!(f, "Truncated header"),
+            Self::InvalidMagic => write!(f, "Invalid magic"),
+            Self::RecordTooShort => write!(f, "Record too short"),
             Self::Io(e) => write!(f, "Io error: {}", e),
+            Self::InvalidUtf8(e) => write!(f, "Invalid Utf-8 format {}", e),
+            Self::InvalidNumber => write!(f, "Invalid number"),
+            Self::MalformedLine => write!(f, "Malformed line"),
+            Self::MissingField(field) => write!(f, "Missing field {}", field),
         }
     }
 }
@@ -25,9 +53,21 @@ impl From<ParseTransactionTypeError> for ParseError {
     }
 }
 
+impl From<ParseTransactionStatusError> for ParseError {
+    fn from(value: ParseTransactionStatusError) -> Self {
+        ParseError::TransactionStatus(value)
+    }
+}
+
 impl From<io::Error> for ParseError {
     fn from(value: io::Error) -> Self {
         ParseError::Io(value)
+    }
+}
+
+impl From<std::string::FromUtf8Error> for ParseError {
+    fn from(value: std::string::FromUtf8Error) -> Self {
+        ParseError::InvalidUtf8(value)
     }
 }
 
@@ -50,4 +90,21 @@ impl Display for ParseTransactionTypeError {
     }
 }
 
-impl Error for ParseTransactionTypeError {}
+#[derive(Debug)]
+pub enum ParseTransactionStatusError {
+    UnknownTransactionStatusByte(u8),
+    UnknownTransactionStatusString(String),
+}
+
+impl Display for ParseTransactionStatusError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseTransactionStatusError::UnknownTransactionStatusByte(b) => {
+                write!(f, "Unknown transaction status '{}'", b)
+            }
+            ParseTransactionStatusError::UnknownTransactionStatusString(s) => {
+                write!(f, "Unknown transaction status '{}'", s)
+            }
+        }
+    }
+}
