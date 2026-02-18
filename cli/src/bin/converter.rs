@@ -1,19 +1,33 @@
+use clap::Parser;
 use formats::bin_format::bin_parser;
 use formats::csv_format::csv_parser;
 use formats::error::ParseError;
 use formats::model::Record;
 use formats::text_format::text_parser;
-use std::{env, fs::File};
+use std::fs::File;
+
+#[derive(Parser)]
+#[command(name = "Converter")]
+#[command(version = "1.0")]
+#[command(about = "Convert transactions from fromat to format", long_about = None)]
+struct Cli {
+    #[arg(long, value_name = "INPUT_FILE_NAME")]
+    input: String,
+    #[arg(long, short)]
+    input_format: String,
+    #[arg(long, value_name = "OUTPUT_FILE_NAME")]
+    output: String,
+    #[arg(long, short)]
+    output_format: String,
+}
 
 fn main() -> Result<(), ParseError> {
-    let mut args = env::args().skip(1);
+    let cli = Cli::parse();
 
-    const USAGE_MSG: &str = "Usage: text_file.txt text csv_file.csv csv";
-
-    let from_file_name = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
-    let from_format = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
-    let to_file = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
-    let to_format = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
+    let from_file_name = cli.input;
+    let from_format = cli.input_format;
+    let to_file = cli.output;
+    let to_format = cli.output_format;
 
     let data = get_transactions_from(&from_file_name, &from_format)?;
 

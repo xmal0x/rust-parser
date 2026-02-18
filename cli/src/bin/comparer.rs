@@ -1,23 +1,36 @@
+use clap::Parser;
 use formats::bin_format::bin_parser;
 use formats::csv_format::csv_parser;
 use formats::error::ParseError;
 use formats::model::Record;
 use formats::text_format::text_parser;
 use std::collections::HashSet;
-use std::{env, fs::File};
+use std::fs::File;
+
+#[derive(Parser)]
+#[command(name = "Comparer")]
+#[command(version = "1.0")]
+#[command(about = "Compare transactions from 2 sources", long_about = None)]
+struct Cli {
+    #[arg(long)]
+    file1: String,
+    #[arg(long)]
+    format1: String,
+    #[arg(long)]
+    file2: String,
+    #[arg(long)]
+    format2: String,
+}
 
 fn main() -> Result<(), ParseError> {
-    let mut args = env::args().skip(1);
+    let cli = Cli::parse();
 
-    const USAGE_MSG: &str = "Usage: text_file.txt text csv_file.csv csv";
-
-    let file_name_1 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
-    let format_1 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
-    let file_name_2 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
-    let format_2 = args.next().ok_or(ParseError::InvalidArgument(USAGE_MSG))?;
+    let file_name_1 = cli.file1;
+    let format_1 = cli.format1;
+    let file_name_2 = cli.file2;
+    let format_2 = cli.format2;
 
     let transactions_1 = get_transactions_from_file(&file_name_1, &format_1)?;
-
     let transactions_2 = get_transactions_from_file(&file_name_2, &format_2)?;
 
     if is_equal_transactions(&transactions_1, &transactions_2) {

@@ -9,11 +9,15 @@ support formats:
 
 **Converter**
 
-`cargo run -p cli --bin converter records_example.bin bin foo3.txt text`
+Example
+
+`cargo run -p cli --bin converter -- --input records_example.bin --input-format bin --output new.txt --output-format text`
 
 **Comparer**
 
-`cargo run -p cli --bin comparer records_example.txt text records_example.csv csv`
+Example
+
+`cargo run -p cli --bin comparer -- --file1 records_example.txt --format1 text --file2 records_example.csv --format2 cs`
 
 
 ### Contains
