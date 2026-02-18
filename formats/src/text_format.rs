@@ -1,7 +1,15 @@
 pub mod text_parser {
     use core::error::ParseError;
-    use core::model::{Record, TextRecordDraft, TransactionStatus, TransactionType};
+    use core::model::{Reader, Record, TextRecordDraft, TransactionStatus, TransactionType};
     use std::io::{self, BufRead, BufWriter, Write};
+
+    pub struct Text;
+
+    impl Reader for Text {
+        fn read_from(file: std::fs::File) -> Result<Vec<Record>, ParseError> {
+            self::read_from(file)
+        }
+    }
 
     /// Read transactions from text format and converting to Record entity
     ///

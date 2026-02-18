@@ -16,7 +16,6 @@ pub enum ParseError {
     InvalidNumber,
     MalformedLine,
     MissingField(&'static str),
-    InvalidFormat(String),
     InvalidArgument(&'static str),
 }
 
@@ -39,7 +38,6 @@ impl Display for ParseError {
             Self::InvalidNumber => write!(f, "Invalid number"),
             Self::MalformedLine => write!(f, "Malformed line"),
             Self::MissingField(field) => write!(f, "Missing field {}", field),
-            Self::InvalidFormat(format) => write!(f, "Invalid format {}", format),
             Self::InvalidArgument(message) => write!(f, "Invalid argument: {}", message),
         }
     }

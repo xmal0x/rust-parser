@@ -1,9 +1,17 @@
 pub mod csv_parser {
     use core::{
         error::ParseError,
-        model::{Record, TransactionStatus, TransactionType},
+        model::{Reader, Record, TransactionStatus, TransactionType},
     };
     use std::io::{self, BufRead, BufWriter, Write};
+
+    pub struct Csv;
+
+    impl Reader for Csv {
+        fn read_from(file: std::fs::File) -> Result<Vec<Record>, ParseError> {
+            self::read_from(file)
+        }
+    }
 
     const HEADER: &str =
         "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";

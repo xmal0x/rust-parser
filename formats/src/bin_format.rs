@@ -1,9 +1,17 @@
 pub mod bin_parser {
     use core::{
         error::ParseError,
-        model::{Record, TransactionStatus, TransactionType},
+        model::{Reader, Record, TransactionStatus, TransactionType},
     };
     use std::io::{BufReader, BufWriter, ErrorKind, Read, Write};
+
+    pub struct Bin;
+
+    impl Reader for Bin {
+        fn read_from(file: std::fs::File) -> Result<Vec<Record>, ParseError> {
+            self::read_from(file)
+        }
+    }
 
     const MAGIC: [u8; 4] = *b"YPBN";
     const MIN_RECORD_SIZE: u32 = 46;

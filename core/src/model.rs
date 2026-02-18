@@ -1,3 +1,5 @@
+use std::{fmt::Display, fs::File};
+
 use crate::error::{ParseError, ParseTransactionStatusError, ParseTransactionTypeError};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
@@ -168,4 +170,25 @@ impl TransactionStatus {
             )),
         }
     }
+}
+
+#[derive(Clone, Debug)]
+pub enum Format {
+    Csv,
+    Text,
+    Bin,
+}
+
+impl Display for Format {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Format::Csv => write!(f, "Csv"),
+            Format::Text => write!(f, "Text"),
+            Format::Bin => write!(f, "Bin"),
+        }
+    }
+}
+
+pub trait Reader {
+    fn read_from(file: File) -> Result<Vec<Record>, ParseError>;
 }
