@@ -1,75 +1,6 @@
-use crate::{Record, TransactionStatus, TransactionType, error::ParseError};
-
-impl Record {
-    fn from_draft(draft: &TextRecordDraft) -> Result<Record, ParseError> {
-        Ok(Record {
-            tx_id: draft.tx_id.ok_or(ParseError::MissingField("tx_id"))?,
-            from_user_id: draft
-                .from_user_id
-                .ok_or(ParseError::MissingField("from_user_id"))?,
-            to_user_id: draft
-                .to_user_id
-                .ok_or(ParseError::MissingField("to_user_id"))?,
-            amount: draft.amount.ok_or(ParseError::MissingField("amount"))?,
-            tx_type: draft
-                .tx_type
-                .clone()
-                .ok_or(ParseError::MissingField("tx_type"))?,
-            timestamp: draft
-                .timestamp
-                .ok_or(ParseError::MissingField("timestamp"))?,
-            status: draft
-                .status
-                .clone()
-                .ok_or(ParseError::MissingField("status"))?,
-            description: draft
-                .description
-                .clone()
-                .ok_or(ParseError::MissingField("description"))?,
-        })
-    }
-}
-
-#[derive(Debug)]
-pub struct TextRecordDraft {
-    tx_id: Option<u64>,
-    tx_type: Option<TransactionType>,
-    from_user_id: Option<u64>,
-    to_user_id: Option<u64>,
-    amount: Option<u64>,
-    timestamp: Option<u64>,
-    status: Option<TransactionStatus>,
-    description: Option<String>,
-}
-
-impl TextRecordDraft {
-    fn reset(&mut self) {
-        self.tx_id = None;
-        self.tx_type = None;
-        self.from_user_id = None;
-        self.to_user_id = None;
-        self.amount = None;
-        self.timestamp = None;
-        self.status = None;
-        self.description = None;
-    }
-
-    fn is_empty(&self) -> bool {
-        self.tx_id.is_none()
-            && self.tx_type.is_none()
-            && self.from_user_id.is_none()
-            && self.to_user_id.is_none()
-            && self.amount.is_none()
-            && self.timestamp.is_none()
-            && self.status.is_none()
-            && self.description.is_none()
-    }
-}
-
 pub mod text_parser {
-    use crate::error::ParseError;
-    use crate::text_format::TextRecordDraft;
-    use crate::{Record, TransactionStatus, TransactionType};
+    use core::error::ParseError;
+    use core::model::{Record, TextRecordDraft, TransactionStatus, TransactionType};
     use std::io::{self, BufRead, BufWriter, Write};
 
     /// Read transactions from text format and converting to Record entity
@@ -88,7 +19,7 @@ pub mod text_parser {
     ///     STATUS: FAILURE";
     ///
     /// let cursor = std::io::Cursor::new(&data[..]);
-    /// let r = rust_parser::text_format::text_parser::read_from(cursor).unwrap();
+    /// let r = formats::text_format::text_parser::read_from(cursor).unwrap();
     ///
     /// assert_eq!(r.len(), 1);
     /// ```
@@ -154,20 +85,20 @@ pub mod text_parser {
     /// ```
     /// use std::io::{BufRead, BufReader};
     ///
-    /// let mock: Vec<rust_parser::Record> = vec![
-    /// rust_parser::Record {
+    /// let mock: Vec<core::model::Record> = vec![
+    /// core::model::Record {
     ///     tx_id: 1000000000000000,
-    ///     tx_type: rust_parser::TransactionType::Deposit,
+    ///     tx_type: core::model::TransactionType::Deposit,
     ///     from_user_id: 0,
     ///     to_user_id: 9223372036854775807,
     ///     amount: 100,
     ///     timestamp: 1633036860000,
-    ///     status: rust_parser::TransactionStatus::Failure,
+    ///     status: core::model::TransactionStatus::Failure,
     ///     description: String::from("\"Record number 1\""),
     /// }];
     ///
     /// let mut cursor = std::io::Cursor::new(Vec::new());
-    /// let r = rust_parser::text_format::text_parser::write_to(&mut cursor, mock);
+    /// let r = formats::text_format::text_parser::write_to(&mut cursor, mock);
     ///
     /// assert!(r.is_ok());
     ///
@@ -210,7 +141,7 @@ pub mod text_parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Record, TransactionType};
+    use core::model::{Record, TransactionStatus, TransactionType};
     use std::io::{BufRead, BufReader, Cursor};
 
     use super::*;

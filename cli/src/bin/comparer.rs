@@ -1,8 +1,8 @@
-use rust_parser::Record;
-use rust_parser::bin_format::bin_parser;
-use rust_parser::csv_format::csv_parser;
-use rust_parser::error::ParseError;
-use rust_parser::text_format::text_parser;
+use formats::bin_format::bin_parser;
+use formats::csv_format::csv_parser;
+use formats::error::ParseError;
+use formats::model::Record;
+use formats::text_format::text_parser;
 use std::collections::HashSet;
 use std::{env, fs::File};
 
@@ -63,7 +63,7 @@ fn is_equal_transactions(transactions_1: &[Record], transactions_2: &[Record]) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rust_parser::{TransactionStatus, TransactionType};
+    use formats::model::{TransactionStatus, TransactionType};
 
     fn records_mock_1() -> [Record; 2] {
         [

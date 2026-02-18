@@ -1,11 +1,4 @@
-use error::ParseTransactionTypeError;
-
-use crate::error::ParseTransactionStatusError;
-
-pub mod bin_format;
-pub mod csv_format;
-pub mod error;
-pub mod text_format;
+use crate::error::{ParseError, ParseTransactionStatusError, ParseTransactionTypeError};
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct Record {
@@ -17,6 +10,72 @@ pub struct Record {
     pub timestamp: u64,
     pub status: TransactionStatus,
     pub description: String,
+}
+
+impl Record {
+    pub fn from_draft(draft: &TextRecordDraft) -> Result<Record, ParseError> {
+        Ok(Record {
+            tx_id: draft.tx_id.ok_or(ParseError::MissingField("tx_id"))?,
+            from_user_id: draft
+                .from_user_id
+                .ok_or(ParseError::MissingField("from_user_id"))?,
+            to_user_id: draft
+                .to_user_id
+                .ok_or(ParseError::MissingField("to_user_id"))?,
+            amount: draft.amount.ok_or(ParseError::MissingField("amount"))?,
+            tx_type: draft
+                .tx_type
+                .clone()
+                .ok_or(ParseError::MissingField("tx_type"))?,
+            timestamp: draft
+                .timestamp
+                .ok_or(ParseError::MissingField("timestamp"))?,
+            status: draft
+                .status
+                .clone()
+                .ok_or(ParseError::MissingField("status"))?,
+            description: draft
+                .description
+                .clone()
+                .ok_or(ParseError::MissingField("description"))?,
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct TextRecordDraft {
+    pub tx_id: Option<u64>,
+    pub tx_type: Option<TransactionType>,
+    pub from_user_id: Option<u64>,
+    pub to_user_id: Option<u64>,
+    pub amount: Option<u64>,
+    pub timestamp: Option<u64>,
+    pub status: Option<TransactionStatus>,
+    pub description: Option<String>,
+}
+
+impl TextRecordDraft {
+    pub fn reset(&mut self) {
+        self.tx_id = None;
+        self.tx_type = None;
+        self.from_user_id = None;
+        self.to_user_id = None;
+        self.amount = None;
+        self.timestamp = None;
+        self.status = None;
+        self.description = None;
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.tx_id.is_none()
+            && self.tx_type.is_none()
+            && self.from_user_id.is_none()
+            && self.to_user_id.is_none()
+            && self.amount.is_none()
+            && self.timestamp.is_none()
+            && self.status.is_none()
+            && self.description.is_none()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
