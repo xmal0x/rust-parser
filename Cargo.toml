@@ -1,0 +1,7 @@
+[workspace]
+members = [
+  "core",
+  "formats",
+  "cli",
+]
+resolver = "2"
