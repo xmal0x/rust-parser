@@ -1,10 +1,9 @@
 use clap::Parser;
-use cli::cli_types::cli_types::ConverterCli;
+use cli::ConverterCli;
 use formats::bin_format::bin_parser;
 use formats::csv_format::csv_parser;
-use formats::error::ParseError;
-use formats::model::{Format, Record};
 use formats::text_format::text_parser;
+use formats::{Format, ParseError, Record};
 use std::fs::File;
 
 fn main() -> Result<(), ParseError> {

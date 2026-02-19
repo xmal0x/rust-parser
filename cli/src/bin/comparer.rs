@@ -1,10 +1,9 @@
 use clap::Parser;
-use cli::cli_types::cli_types::ComparerCli;
+use cli::ComparerCli;
 use formats::bin_format::bin_parser::Bin;
 use formats::csv_format::csv_parser::Csv;
-use formats::error::ParseError;
-use formats::model::{Format, Reader, Record};
 use formats::text_format::text_parser::Text;
+use formats::{Format, ParseError, Reader, Record};
 use std::collections::HashSet;
 use std::fs::File;
 
@@ -61,7 +60,7 @@ fn is_equal_transactions(transactions_1: &[Record], transactions_2: &[Record]) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use formats::model::{TransactionStatus, TransactionType};
+    use formats::{TransactionStatus, TransactionType};
 
     fn records_mock_1() -> [Record; 2] {
         [

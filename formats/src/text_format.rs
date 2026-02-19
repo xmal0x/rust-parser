@@ -1,6 +1,5 @@
 pub mod text_parser {
-    use core::error::ParseError;
-    use core::model::{Reader, Record, TextRecordDraft, TransactionStatus, TransactionType};
+    use core::{ParseError, Reader, Record, TextRecordDraft, TransactionStatus, TransactionType};
     use std::io::{self, BufRead, BufWriter, Write};
 
     pub struct Text;
@@ -93,15 +92,15 @@ pub mod text_parser {
     /// ```
     /// use std::io::{BufRead, BufReader};
     ///
-    /// let mock: Vec<core::model::Record> = vec![
-    /// core::model::Record {
+    /// let mock: Vec<core::Record> = vec![
+    /// core::Record {
     ///     tx_id: 1000000000000000,
-    ///     tx_type: core::model::TransactionType::Deposit,
+    ///     tx_type: core::TransactionType::Deposit,
     ///     from_user_id: 0,
     ///     to_user_id: 9223372036854775807,
     ///     amount: 100,
     ///     timestamp: 1633036860000,
-    ///     status: core::model::TransactionStatus::Failure,
+    ///     status: core::TransactionStatus::Failure,
     ///     description: String::from("\"Record number 1\""),
     /// }];
     ///
@@ -149,7 +148,7 @@ pub mod text_parser {
 
 #[cfg(test)]
 mod tests {
-    use core::model::{Record, TransactionStatus, TransactionType};
+    use core::{Record, TransactionStatus, TransactionType};
     use std::io::{BufRead, BufReader, Cursor};
 
     use super::*;
