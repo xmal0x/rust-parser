@@ -1,7 +1,14 @@
 pub mod bin_parser {
-    use crate::error::ParseError;
-    use crate::{Record, TransactionStatus, TransactionType};
+    use core::{ParseError, Reader, Record, TransactionStatus, TransactionType};
     use std::io::{BufReader, BufWriter, ErrorKind, Read, Write};
+
+    pub struct Bin;
+
+    impl Reader for Bin {
+        fn read_from(file: std::fs::File) -> Result<Vec<Record>, ParseError> {
+            self::read_from(file)
+        }
+    }
 
     const MAGIC: [u8; 4] = *b"YPBN";
     const MIN_RECORD_SIZE: u32 = 46;
@@ -19,7 +26,7 @@ pub mod bin_parser {
     /// 32, 49, 34];
     ///
     /// let cursor = std::io::Cursor::new(&BYTES_MOCK[..]);
-    /// let r = rust_parser::bin_format::bin_parser::read_from(cursor).unwrap();
+    /// let r = formats::bin_format::bin_parser::read_from(cursor).unwrap();
     ///
     /// assert_eq!(r.len(), 1);
     /// ```
@@ -97,20 +104,20 @@ pub mod bin_parser {
     /// # Examples
     ///
     /// ```
-    ///let mock: Vec<rust_parser::Record> = vec![
-    /// rust_parser::Record {
+    ///let mock: Vec<core::Record> = vec![
+    /// core::Record {
     ///     tx_id: 1000000000000000,
-    ///     tx_type: rust_parser::TransactionType::Deposit,
+    ///     tx_type: core::TransactionType::Deposit,
     ///     from_user_id: 0,
     ///     to_user_id: 9223372036854775807,
     ///     amount: 100,
     ///     timestamp: 1633036860000,
-    ///     status: rust_parser::TransactionStatus::Failure,
+    ///     status: core::TransactionStatus::Failure,
     ///     description: String::from("\"Record number 1\""),
     /// }];
     ///
     /// let mut cursor = std::io::Cursor::new(Vec::new());
-    /// let r = rust_parser::bin_format::bin_parser::write_to(&mut cursor, mock);
+    /// let r = formats::bin_format::bin_parser::write_to(&mut cursor, mock);
     ///
     /// assert!(r.is_ok());
     ///
@@ -182,7 +189,7 @@ pub mod bin_parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Record, TransactionStatus, TransactionType};
+    use core::{Record, TransactionStatus, TransactionType};
     use std::io::Cursor;
 
     use super::*;

@@ -1,6 +1,14 @@
 pub mod csv_parser {
-    use crate::{Record, TransactionStatus, TransactionType, error::ParseError};
+    use core::{ParseError, Reader, Record, TransactionStatus, TransactionType};
     use std::io::{self, BufRead, BufWriter, Write};
+
+    pub struct Csv;
+
+    impl Reader for Csv {
+        fn read_from(file: std::fs::File) -> Result<Vec<Record>, ParseError> {
+            self::read_from(file)
+        }
+    }
 
     const HEADER: &str =
         "TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION";
@@ -13,7 +21,7 @@ pub mod csv_parser {
     /// let data = b"TX_ID,TX_TYPE,FROM_USER_ID,TO_USER_ID,AMOUNT,TIMESTAMP,STATUS,DESCRIPTION\n1000000000000000,DEPOSIT,0,9223372036854775807,100,1633036860000,FAILURE,\"Record number 1\"\n";
     ///
     /// let cursor = std::io::Cursor::new(&data[..]);
-    /// let r = rust_parser::csv_format::csv_parser::read_from(cursor).unwrap();
+    /// let r = formats::csv_format::csv_parser::read_from(cursor).unwrap();
     ///
     /// assert_eq!(r.len(), 1);
     /// ```
@@ -67,20 +75,20 @@ pub mod csv_parser {
     /// ```
     /// use std::io::{BufRead, BufReader};
     ///
-    /// let mock: Vec<rust_parser::Record> = vec![
-    /// rust_parser::Record {
+    /// let mock: Vec<core::Record> = vec![
+    /// core::Record {
     ///     tx_id: 1000000000000000,
-    ///     tx_type: rust_parser::TransactionType::Deposit,
+    ///     tx_type: core::TransactionType::Deposit,
     ///     from_user_id: 0,
     ///     to_user_id: 9223372036854775807,
     ///     amount: 100,
     ///     timestamp: 1633036860000,
-    ///     status: rust_parser::TransactionStatus::Failure,
+    ///     status: core::TransactionStatus::Failure,
     ///     description: String::from("\"Record number 1\""),
     /// }];
     ///
     /// let mut cursor = std::io::Cursor::new(Vec::new());
-    /// let r = rust_parser::csv_format::csv_parser::write_to(&mut cursor, mock);
+    /// let r = formats::csv_format::csv_parser::write_to(&mut cursor, mock);
     ///
     /// assert!(r.is_ok());
     ///
@@ -124,7 +132,7 @@ pub mod csv_parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::{Record, TransactionStatus, TransactionType};
+    use core::{Record, TransactionStatus, TransactionType};
     use std::io::{BufRead, BufReader, Cursor};
 
     use super::*;
